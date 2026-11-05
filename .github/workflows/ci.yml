@@ -1,0 +1,47 @@
+name: Microservices CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  java-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Build Order Service
+        working-directory: ./order-service
+        run: ./mvnw clean package -DskipTests
+
+  node-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install API Gateway Dependencies
+        working-directory: ./api-gateway
+        run: npm install
+
+  python-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install AI Service Dependencies
+        working-directory: ./ai-service
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn pika
