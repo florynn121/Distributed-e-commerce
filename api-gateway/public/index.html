@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microservice E-Commerce Store</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; background: #f4f4f9; }
+        .product-card { background: white; padding: 20px; border-radius: 8px; width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; font-size: 16px;}
+        button:hover { background: #0056b3; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>Tech Store</h1>
+    
+    <div class="product-card">
+        <h2>Crash Laptop</h2>
+        <p>Price: $1499.99</p>
+        <button onclick="checkout()">Buy Now</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+    async function checkout() {
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerText = "Authenticating and processing...";
+        statusDiv.style.color = "orange";
+
+        try {
+            // 1. Authenticate to get the JWT
+            const loginResponse = await fetch('/login', { method: 'POST' });
+            const loginData = await loginResponse.json();
+            const token = loginData.token;
+
+            // 2. Send the Checkout request WITH the secure JWT
+            const response = await fetch('/api/orders/checkout', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ product: "Crash Laptop", price: 1499.99 })
+            });
+            
+            if (response.ok) {
+                statusDiv.innerText = "Success: Order placed securely!";
+                statusDiv.style.color = "green";
+            } else {
+                statusDiv.innerText = "Error: Authorization failed.";
+                statusDiv.style.color = "red";
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            statusDiv.innerText = "Connection failed. Is the Gateway running?";
+            statusDiv.style.color = "red";
+        }
+    }
+</script>
+</body>
+</html>
