@@ -38,6 +38,24 @@ py -3 scripts/checkout-smoke.py
 
 Use `python3` on macOS or Linux. Add `--broker-restart` on an isolated test stack to verify that checkout works during a controlled RabbitMQ outage and that delivery resumes afterward. GitHub Actions runs that recovery test along with the component tests and a Worker dry-run build.
 
+### Rehearse PostgreSQL recovery
+
+After placing a demo order, back up the running database from the same folder where you started Compose. Replace `7` with the order number from your storefront.
+
+```powershell
+py -3 scripts/postgres-recovery.py backup backups\staging.dump
+py -3 scripts/postgres-recovery.py verify backups\staging.dump --order-id 7
+```
+
+The verification restores the dump into a temporary PostgreSQL 15 container with networking disabled, checks orders, pending outbox events and Flyway history, then removes the temporary container. Use a new filename for each backup. Keep backups out of Git, and store production backups in encrypted storage outside the origin host. This rehearsal covers PostgreSQL, including events still in its outbox. A complete recovery plan also needs to account for messages already held in RabbitMQ.
+
+On a Linux staging host that uses the production Compose overlay, point the backup command at the same files used to start the stack.
+
+```bash
+COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml COMPOSE_ENV_FILES=.env.production \
+  python3 scripts/postgres-recovery.py backup "backups/staging-$(date +%Y%m%d-%H%M%S).dump"
+```
+
 ## Deploy to Cloudflare
 
 Cloudflare Workers serves the storefront and forwards API requests through Cloudflare Tunnel. The Java service, Python worker, PostgreSQL, and RabbitMQ run on a regional Docker host. The production Compose overlay publishes zero host ports and removes local password login. Cloudflare Access authenticates shoppers at checkout and separately authorizes the Worker to reach the origin.

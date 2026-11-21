@@ -63,6 +63,10 @@ jobs:
           source .env
           set +a
           python3 scripts/checkout-smoke.py --broker-restart
+      - name: Rehearse PostgreSQL recovery
+        run: |
+          python3 scripts/postgres-recovery.py backup "$RUNNER_TEMP/commerce.dump"
+          python3 scripts/postgres-recovery.py verify "$RUNNER_TEMP/commerce.dump"
       - name: Capture logs on failure
         if: failure()
         run: docker compose logs --no-color --tail=200

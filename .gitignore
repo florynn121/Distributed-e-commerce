@@ -4,6 +4,7 @@
 !.env.production.example
 .dev.vars*
 /secrets/
+/backups/
 *.secrets
 *.token
 *.token.txt
