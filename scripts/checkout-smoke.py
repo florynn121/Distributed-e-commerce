@@ -47,7 +47,7 @@ def main():
 
     password = os.environ.get("GATEWAY_LOGIN_PASSWORD")
     if not password and sys.stdin.isatty():
-        password = getpass.getpass("Local storefront password from .env: ")
+        password = getpass.getpass("Storefront password (GATEWAY_LOGIN_PASSWORD in this project's .env): ")
     if not password:
         parser.error("Set GATEWAY_LOGIN_PASSWORD or run from an interactive terminal.")
 
@@ -86,7 +86,10 @@ def main():
     checkout_path = "/api/orders/checkout"
     assert request(checkout_path, {"sku": "studio-laptop"}, key=uuid.uuid4().hex)[0] == 401
     status, login = request("/login", {"password": password})
-    assert status == 200, ("Local login failed", status)
+    if status == 401:
+        sys.exit("Storefront login rejected. Use GATEWAY_LOGIN_PASSWORD from this project's .env.")
+    if status != 200:
+        sys.exit(f"Storefront login failed with HTTP {status}. Check the local gateway logs.")
     token = login["token"]
 
     status, catalog = request("/api/catalog")
