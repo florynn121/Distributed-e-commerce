@@ -1,7 +1,14 @@
-FROM node:20-alpine
+FROM node:24-alpine
+
+ENV NODE_ENV=production
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-fund && npm cache clean --force
+
+COPY --chown=node:node index.js config.js auth.js catalog.json ./
+COPY --chown=node:node public ./public
+
+USER node
 EXPOSE 3000
 CMD ["node", "index.js"]

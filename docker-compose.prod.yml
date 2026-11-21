@@ -1,0 +1,39 @@
+services:
+  api-gateway:
+    ports: !reset []
+    environment:
+      AUTH_MODE: access
+      GATEWAY_LOGIN_PASSWORD: !reset null
+      JWT_SECRET: !reset null
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set the HTTPS storefront origin}
+      CLOUDFLARE_ACCESS_ISSUER: ${CLOUDFLARE_ACCESS_ISSUER:?Set the Cloudflare Access team issuer URL}
+      CLOUDFLARE_ACCESS_AUDIENCE: ${CLOUDFLARE_ACCESS_AUDIENCE:?Set the Cloudflare Access application audience}
+      EDGE_ORIGIN_TOKEN: ${EDGE_ORIGIN_TOKEN:?Set the same origin token in the Worker and gateway}
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.11.0
+    profiles:
+      - tunnel
+    command: ["tunnel", "--no-autoupdate", "run", "--token-file", "/run/secrets/cloudflare_tunnel_token"]
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    secrets:
+      - cloudflare_tunnel_token
+    networks:
+      - edge
+
+secrets:
+  cloudflare_tunnel_token:
+    file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:-./secrets/cloudflare-tunnel-token}

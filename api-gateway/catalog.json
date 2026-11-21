@@ -1,0 +1,23 @@
+{
+  "currency": "USD",
+  "products": [
+    {
+      "sku": "studio-laptop",
+      "name": "Studio Laptop",
+      "description": "A portable workstation for the studio or home office.",
+      "priceCents": 149999
+    },
+    {
+      "sku": "travel-keyboard",
+      "name": "Travel Keyboard",
+      "description": "A compact keyboard for a desk that moves with you.",
+      "priceCents": 7999
+    },
+    {
+      "sku": "usb-c-hub",
+      "name": "USB-C Hub",
+      "description": "Keep everyday accessories connected through a single USB-C port.",
+      "priceCents": 4999
+    }
+  ]
+}

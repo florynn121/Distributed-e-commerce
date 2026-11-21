@@ -1,0 +1,48 @@
+name: Deploy Cloudflare Worker
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency: production-edge-worker
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: edge
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: edge/package-lock.json
+      - name: Test Worker
+        run: npm ci && npm test && npm run check
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ORIGIN_URL: ${{ vars.ORIGIN_URL }}
+          ORIGIN_ACCESS_CLIENT_ID: ${{ secrets.ORIGIN_ACCESS_CLIENT_ID }}
+          ORIGIN_ACCESS_CLIENT_SECRET: ${{ secrets.ORIGIN_ACCESS_CLIENT_SECRET }}
+          EDGE_ORIGIN_TOKEN: ${{ secrets.EDGE_ORIGIN_TOKEN }}
+        run: |
+          umask 077
+          secrets_file="$(mktemp)"
+          trap 'rm -f "$secrets_file"' EXIT
+          node - "$secrets_file" <<'NODE'
+          const fs = require('node:fs');
+          const names = ['ORIGIN_URL', 'ORIGIN_ACCESS_CLIENT_ID', 'ORIGIN_ACCESS_CLIENT_SECRET', 'EDGE_ORIGIN_TOKEN'];
+          for (const name of [...names, 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN']) {
+            if (!process.env[name]) throw new Error(`Missing GitHub production environment value: ${name}`);
+          }
+          fs.writeFileSync(process.argv[2], JSON.stringify(Object.fromEntries(names.map(name => [name, process.env[name]]))));
+          NODE
+          npm run deploy -- --secrets-file "$secrets_file"
