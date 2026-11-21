@@ -30,16 +30,13 @@ To opt into product search, run `docker compose --profile search up --build --wa
 
 ## Verify the stack
 
-For an isolated local checkout, run this test from the repository root in a Bash shell after starting Compose. It exercises concurrent retries for one order, key conflicts, recording during a broker outage, and delivery when RabbitMQ returns.
+From the repository root, run the smoke test with Python 3 after starting your local Compose stack. Enter the `GATEWAY_LOGIN_PASSWORD` from `.env` at the prompt. The test creates a demo order, checks concurrent retries and key conflicts, and verifies that the Python worker receives its event.
 
-```bash
-set -a
-source .env
-set +a
-python3 scripts/checkout-smoke.py --broker-restart
+```powershell
+py -3 scripts/checkout-smoke.py
 ```
 
-GitHub Actions also runs the component tests and a Worker dry-run build.
+Use `python3` on macOS or Linux. Add `--broker-restart` on an isolated test stack to verify that checkout works during a controlled RabbitMQ outage and that delivery resumes afterward. GitHub Actions runs that recovery test along with the component tests and a Worker dry-run build.
 
 ## Deploy to Cloudflare
 

@@ -2,9 +2,11 @@
 
 import argparse
 import concurrent.futures
+import getpass
 import json
 import os
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -40,6 +42,15 @@ def main():
         help="Stop and restart RabbitMQ in this dedicated test project.",
     )
     args = parser.parse_args()
+    if not __debug__:
+        parser.error("Run without Python optimization so the smoke checks execute.")
+
+    password = os.environ.get("GATEWAY_LOGIN_PASSWORD")
+    if not password and sys.stdin.isatty():
+        password = getpass.getpass("Local storefront password from .env: ")
+    if not password:
+        parser.error("Set GATEWAY_LOGIN_PASSWORD or run from an interactive terminal.")
+
     origin = args.url.rstrip("/")
 
     def request(path, body=None, token=None, key=None):
@@ -74,11 +85,11 @@ def main():
     poll(ready, "gateway and order service readiness")
     checkout_path = "/api/orders/checkout"
     assert request(checkout_path, {"sku": "studio-laptop"}, key=uuid.uuid4().hex)[0] == 401
-    status, login = request("/login", {"password": os.environ["GATEWAY_LOGIN_PASSWORD"]})
+    status, login = request("/login", {"password": password})
     assert status == 200, ("Local login failed", status)
     token = login["token"]
 
-    status, catalog = request("/api/catalog", token=token)
+    status, catalog = request("/api/catalog")
     assert status == 200 and len(catalog["products"]) >= 2, ("Catalog failed", status)
     product, other = catalog["products"][:2]
     key = uuid.uuid4().hex
@@ -86,9 +97,9 @@ def main():
     def checkout(item=product, identity=key):
         return request(checkout_path, {"sku": item["sku"]}, token=token, key=identity)
 
-    if args.broker_restart:
-        compose("stop", "rabbitmq")
     try:
+        if args.broker_restart:
+            compose("stop", "rabbitmq")
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             responses = list(pool.map(lambda _: checkout(), range(2)))
         assert sorted(status for status, _ in responses) == [200, 201], responses
